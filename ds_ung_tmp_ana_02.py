@@ -273,7 +273,7 @@ class UNGTemperatureAnalyzer:
         
         # Save plot
         plt.savefig('r_squared_comparison.png', dpi=300, bbox_inches='tight')
-        plt.show()
+        #plt.show()
         
         logger.info("R-squared comparison plot saved")
     
@@ -318,7 +318,7 @@ class UNGTemperatureAnalyzer:
         # Save plot
         plt.savefig(f'best_r_squared_relationship_{best_feature}.png', 
                    dpi=300, bbox_inches='tight')
-        plt.show()
+        #plt.show()
         
         logger.info(f"Best R-squared relationship plot saved for {best_feature}")
     
@@ -357,7 +357,7 @@ class UNGTemperatureAnalyzer:
         
         # Save individual plot
         plt.savefig('open_price_vs_temperature.png', dpi=300, bbox_inches='tight')
-        plt.show()
+        #plt.show()
         
         logger.info("Open Price vs Temperature plot saved")
     
@@ -393,7 +393,7 @@ class UNGTemperatureAnalyzer:
         
         # Save individual plot
         plt.savefig('correlation_heatmap.png', dpi=300, bbox_inches='tight')
-        plt.show()
+        #plt.show()
         
         logger.info("Correlation heatmap saved")
     
@@ -445,7 +445,7 @@ class UNGTemperatureAnalyzer:
         
         # Save individual plot
         plt.savefig('temperature_anomaly_vs_price_changes.png', dpi=300, bbox_inches='tight')
-        plt.show()
+        #plt.show()
         
         logger.info(f"Temperature anomaly vs price changes plot saved with {len(clean_data)} data points")
     
@@ -496,7 +496,7 @@ class UNGTemperatureAnalyzer:
         
         # Save individual plot
         plt.savefig('volume_vs_temperature_volatility.png', dpi=300, bbox_inches='tight')
-        plt.show()
+        #plt.show()
         
         logger.info("Volume vs temperature volatility plot saved")
     
