@@ -825,7 +825,9 @@ class UNGTemperatureAnalyzer:
                 start = tstart if start is None else start
                 end = tend if end is None else end
             if start is not None and end is not None:
-                self.stock_data = self.stock_data.loc[(self.stock_data.index >= start) & (self.stock_data.index <= end)].copy()
+                #self.stock_data = self.stock_data.loc[(self.stock_data.index >= start) & (self.stock_data.index <= end)].copy()
+                self.stock_data["Date"] = pd.to_datetime(self.stock_data["Date"])
+                self.stock_data = self.stock_data.loc[ (self.stock_data["Date"] >= start) & (self.stock_data["Date"] <= end) ].copy()
 
             # Prepare stock index
             stock = self.stock_data.copy().set_index("Date").sort_index()
@@ -1024,7 +1026,7 @@ def main():
     temp_results = analyzer.run_analysis_temperature()
 
     # Optional storage analysis
-    RUN_STORAGE = False
+    RUN_STORAGE = True
     storage_results = None
     if RUN_STORAGE:
         storage_results = analyzer.run_analysis_storage()
