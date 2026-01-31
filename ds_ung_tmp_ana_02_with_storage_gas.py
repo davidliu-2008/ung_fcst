@@ -656,47 +656,6 @@ class UNGTemperatureAnalyzer:
 
         logger.info("Price vs temp_anomaly_c lag correlation heatmap saved")
 
-    def plot_open_return_vs_temp_anomaly_lag_correlation(self, df):
-        """Plot correlation heatmap: Open return vs lagged temperature anomaly (C)."""
-        logger.info("Creating Open return vs temp_anomaly_c lag correlation heatmap")
-
-        lags = self.config['temperature_lags']
-        for lag in lags:
-            df[f'temp_anomaly_c_lag_{lag}d'] = df['temp_anomaly_c'].shift(lag)
-
-        lag_cols = [f'temp_anomaly_c_lag_{lag}d' for lag in lags]
-        if 'open_return_1d' not in df.columns:
-            logger.warning("open_return_1d missing; skipping Open return vs temp anomaly lag heatmap")
-            return
-
-        corr_data = df[['open_return_1d'] + lag_cols].corr()
-        open_temp_corr = corr_data.loc[['open_return_1d'], lag_cols]
-
-        plt.figure(figsize=(8, 3))
-        sns.heatmap(
-            open_temp_corr,
-            annot=True,
-            cmap='RdBu_r',
-            center=0,
-            vmin=-1,
-            vmax=1,
-            square=True,
-            cbar_kws={'label': 'Correlation Coefficient'}
-        )
-        plt.title('Open Return vs Lagged Temperature Anomaly (C)', fontsize=14, fontweight='bold')
-        plt.xticks(rotation=45)
-        plt.yticks(rotation=0)
-        plt.tight_layout()
-
-        output_path = os.path.join(
-            self.config['output_dir'],
-            f'{self.output_prefix}_open_return_vs_temp_anomaly_lag_correlation.png'
-        )
-        plt.savefig(output_path, dpi=300, bbox_inches='tight')
-        #plt.show()
-
-        logger.info("Open return vs temp_anomaly_c lag correlation heatmap saved")
-    
     def plot_temperature_anomaly_vs_price_changes(self, df):
         """Plot 3: Temperature anomaly vs price changes scatter plot"""
         logger.info("Creating temperature anomaly vs price changes plot")
@@ -1266,8 +1225,167 @@ class UNGTemperatureAnalyzer:
 
         logger.info("Multivariate regression completed")
         return results
+
+    def run_next_day_open_model(self, df):
+        """Fit a linear model to predict next-day Open using selected features."""
+        logger.info("Running next-day Open price model (linear regression)")
+
+        feature_cols = [
+            'weekly_change_bcf',
+            'temp_volatility_5d',
+            'temp_anomaly_c_lag_5d'
+        ]
+        missing = [c for c in feature_cols if c not in df.columns]
+        if missing:
+            logger.warning(f"Missing features for next-day Open model: {missing}")
+            return None
+
+        data = df[feature_cols + ['Open']].copy()
+        data['Open_t_plus_1'] = data['Open'].shift(-1)
+        model_data = data.dropna()
+
+        if len(model_data) < 30:
+            logger.warning("Not enough data for next-day Open model")
+            return None
+
+        X = model_data[feature_cols].values
+        y = model_data['Open_t_plus_1'].values
+
+        model = LinearRegression()
+        model.fit(X, y)
+        y_pred = model.predict(X)
+
+        results = {
+            'in_sample_r2': r2_score(y, y_pred),
+            'n_samples': len(model_data),
+            'feature_cols': feature_cols,
+            'coefficients': pd.DataFrame({
+                'feature': feature_cols,
+                'coefficient': model.coef_
+            }).sort_values('coefficient', key=abs, ascending=False),
+            'intercept': model.intercept_,
+            'predictions': model_data.assign(Open_t_plus_1_pred=y_pred)
+        }
+
+        logger.info("Next-day Open model completed")
+        return results
+
+    def run_next_day_open_xgboost(self, df):
+        """Fit an XGBoost model to predict next-day Open using selected features."""
+        logger.info("Running next-day Open price model (XGBoost)")
+
+        try:
+            from xgboost import XGBRegressor
+        except Exception as e:
+            logger.warning(f"XGBoost not available: {e}")
+            return None
+
+        feature_cols = [
+            'weekly_change_bcf',
+            'temp_volatility_5d',
+            'temp_anomaly_c_lag_5d'
+        ]
+        missing = [c for c in feature_cols if c not in df.columns]
+        if missing:
+            logger.warning(f"Missing features for next-day Open XGBoost model: {missing}")
+            return None
+
+        data = df[feature_cols + ['Open']].copy()
+        data['Open_t_plus_1'] = data['Open'].shift(-1)
+        model_data = data.dropna()
+
+        if len(model_data) < 30:
+            logger.warning("Not enough data for next-day Open XGBoost model")
+            return None
+
+        X = model_data[feature_cols].values
+        y = model_data['Open_t_plus_1'].values
+
+        model = XGBRegressor(
+            n_estimators=300,
+            max_depth=3,
+            learning_rate=0.05,
+            subsample=0.9,
+            colsample_bytree=0.9,
+            objective='reg:squarederror',
+            random_state=42,
+            n_jobs=1
+        )
+        model.fit(X, y)
+        y_pred = model.predict(X)
+
+        results = {
+            'in_sample_r2': r2_score(y, y_pred),
+            'n_samples': len(model_data),
+            'feature_cols': feature_cols,
+            'feature_importance': pd.DataFrame({
+                'feature': feature_cols,
+                'importance': model.feature_importances_
+            }).sort_values('importance', ascending=False),
+            'predictions': model_data.assign(Open_t_plus_1_pred=y_pred)
+        }
+
+        logger.info("Next-day Open XGBoost model completed")
+        return results
+
+    def plot_next_day_open_model(self, results, tag="linear"):
+        """Plot diagnostics for the next-day Open model."""
+        if not results or 'predictions' not in results:
+            logger.warning("Next-day Open model results missing; skipping plots")
+            return
+
+        preds = results['predictions'].copy()
+        if preds.empty:
+            logger.warning("No prediction data available for next-day Open plots")
+            return
+
+        os.makedirs(self.config['output_dir'], exist_ok=True)
+
+        # Time series: actual vs predicted
+        plt.figure(figsize=(12, 6))
+        plt.plot(preds.index, preds['Open_t_plus_1'], label='Actual Next-day Open', color='tab:blue', linewidth=2, alpha=0.8)
+        plt.plot(preds.index, preds['Open_t_plus_1_pred'], label='Predicted Next-day Open', color='tab:orange', linestyle='--', linewidth=2, alpha=0.8)
+        plt.title(f'Next-day Open: Actual vs Predicted ({tag})', fontsize=14, fontweight='bold')
+        plt.xlabel('Date', fontsize=12)
+        plt.ylabel('Open Price ($)', fontsize=12, fontweight='bold')
+        plt.xticks(rotation=45)
+        plt.grid(True, alpha=0.3)
+        plt.legend()
+        plt.tight_layout()
+        output_path = os.path.join(self.config['output_dir'], f'{self.output_prefix}_next_day_open_{tag}_actual_vs_pred.png')
+        plt.savefig(output_path, dpi=300, bbox_inches='tight')
+
+        # Scatter: predicted vs actual
+        plt.figure(figsize=(6, 6))
+        plt.scatter(preds['Open_t_plus_1'], preds['Open_t_plus_1_pred'], alpha=0.6, color='tab:green', edgecolors='black', linewidth=0.3)
+        min_val = min(preds['Open_t_plus_1'].min(), preds['Open_t_plus_1_pred'].min())
+        max_val = max(preds['Open_t_plus_1'].max(), preds['Open_t_plus_1_pred'].max())
+        plt.plot([min_val, max_val], [min_val, max_val], 'r--', linewidth=1)
+        plt.title(f'Predicted vs Actual Next-day Open ({tag})', fontsize=14, fontweight='bold')
+        plt.xlabel('Actual Next-day Open', fontsize=12)
+        plt.ylabel('Predicted Next-day Open', fontsize=12)
+        plt.grid(True, alpha=0.3)
+        plt.tight_layout()
+        output_path = os.path.join(self.config['output_dir'], f'{self.output_prefix}_next_day_open_{tag}_pred_vs_actual.png')
+        plt.savefig(output_path, dpi=300, bbox_inches='tight')
+
+        # Residuals over time
+        preds['residual'] = preds['Open_t_plus_1'] - preds['Open_t_plus_1_pred']
+        plt.figure(figsize=(12, 4))
+        plt.plot(preds.index, preds['residual'], color='tab:red', linewidth=1.5)
+        plt.axhline(0, color='black', linewidth=0.8, linestyle='--')
+        plt.title(f'Next-day Open Residuals Over Time ({tag})', fontsize=14, fontweight='bold')
+        plt.xlabel('Date', fontsize=12)
+        plt.ylabel('Residual ($)', fontsize=12)
+        plt.xticks(rotation=45)
+        plt.grid(True, alpha=0.3)
+        plt.tight_layout()
+        output_path = os.path.join(self.config['output_dir'], f'{self.output_prefix}_next_day_open_{tag}_residuals.png')
+        plt.savefig(output_path, dpi=300, bbox_inches='tight')
+
+        logger.info("Next-day Open model plots saved")
     
-    def generate_report(self, df, corr_matrix, significant_correlations, r_squared_df, multivar_results, storage_significant):
+    def generate_report(self, df, corr_matrix, significant_correlations, r_squared_df, multivar_results, storage_significant, next_day_open_results, next_day_open_xgb_results):
         """Generate analysis report with R-squared results"""
         logger.info("Generating analysis report")
         
@@ -1321,6 +1439,29 @@ class UNGTemperatureAnalyzer:
         else:
             print("Not enough data to fit a multivariate returns model")
 
+        print(f"\nNEXT-DAY OPEN MODEL:")
+        print("-" * 50)
+        if next_day_open_results:
+            print(f"Samples: {next_day_open_results['n_samples']}")
+            print(f"In-sample R²: {next_day_open_results['in_sample_r2']:.3f}")
+            print("Top coefficients (by magnitude):")
+            for _, row in next_day_open_results['coefficients'].iterrows():
+                print(f"  {row['feature']}: {row['coefficient']:.4f}")
+            print(f"Intercept: {next_day_open_results['intercept']:.4f}")
+        else:
+            print("Not enough data to fit next-day Open model")
+
+        print(f"\nNEXT-DAY OPEN MODEL (XGBOOST):")
+        print("-" * 50)
+        if next_day_open_xgb_results:
+            print(f"Samples: {next_day_open_xgb_results['n_samples']}")
+            print(f"In-sample R²: {next_day_open_xgb_results['in_sample_r2']:.3f}")
+            print("Feature importance:")
+            for _, row in next_day_open_xgb_results['feature_importance'].iterrows():
+                print(f"  {row['feature']}: {row['importance']:.4f}")
+        else:
+            print("Not enough data to fit next-day Open XGBoost model")
+
         print(f"\nSTORAGE vs RETURNS:")
         print("-" * 50)
         if storage_significant is not None and len(storage_significant) > 0:
@@ -1357,7 +1498,7 @@ class UNGTemperatureAnalyzer:
         
         print("=" * 70)
     
-    def save_results(self, df, r_squared_df, multivar_results, storage_significant):
+    def save_results(self, df, r_squared_df, multivar_results, storage_significant, next_day_open_results, next_day_open_xgb_results):
         """Save analysis results to file"""
         try:
             output_dir = self.config['output_dir']
@@ -1381,6 +1522,20 @@ class UNGTemperatureAnalyzer:
                 storage_file = os.path.join(output_dir, f'{self.output_prefix}_storage_return_correlations.csv')
                 storage_significant.to_csv(storage_file, index=False)
                 logger.info(f"Storage/return correlations saved to {storage_file}")
+
+            if next_day_open_results:
+                coef_file = os.path.join(output_dir, f'{self.output_prefix}_next_day_open_coefficients.csv')
+                next_day_open_results['coefficients'].to_csv(coef_file, index=False)
+                preds_file = os.path.join(output_dir, f'{self.output_prefix}_next_day_open_predictions.csv')
+                next_day_open_results['predictions'].to_csv(preds_file)
+                logger.info(f"Next-day Open model saved to {coef_file} and {preds_file}")
+
+            if next_day_open_xgb_results:
+                fi_file = os.path.join(output_dir, f'{self.output_prefix}_next_day_open_xgb_feature_importance.csv')
+                next_day_open_xgb_results['feature_importance'].to_csv(fi_file, index=False)
+                preds_file = os.path.join(output_dir, f'{self.output_prefix}_next_day_open_xgb_predictions.csv')
+                next_day_open_xgb_results['predictions'].to_csv(preds_file)
+                logger.info(f"Next-day Open XGBoost model saved to {fi_file} and {preds_file}")
             
         except Exception as e:
             logger.error(f"Error saving results: {e}")
@@ -1434,7 +1589,6 @@ class UNGTemperatureAnalyzer:
             self.plot_open_price_vs_temperature(self.merged_data)
             self.plot_correlation_heatmap(self.merged_data)
             self.plot_price_vs_temp_anomaly_lag_correlation(self.merged_data)
-            self.plot_open_return_vs_temp_anomaly_lag_correlation(self.merged_data)
             self.plot_storage_correlation_heatmap(self.merged_data)
             self.plot_weekly_change_vs_open_price(self.merged_data)
             self.plot_weekly_change_vs_open_return(self.merged_data)
@@ -1447,10 +1601,23 @@ class UNGTemperatureAnalyzer:
             # Generate report
             multivar_results = self.run_multivariate_regression(self.merged_data)
             storage_corr_matrix, storage_significant = self.analyze_storage_correlations(self.merged_data)
-            self.generate_report(self.merged_data, corr_matrix, significant_correlations, r_squared_df, multivar_results, storage_significant)
+            next_day_open_results = self.run_next_day_open_model(self.merged_data)
+            self.plot_next_day_open_model(next_day_open_results, tag="linear")
+            next_day_open_xgb_results = self.run_next_day_open_xgboost(self.merged_data)
+            self.plot_next_day_open_model(next_day_open_xgb_results, tag="xgb")
+            self.generate_report(
+                self.merged_data,
+                corr_matrix,
+                significant_correlations,
+                r_squared_df,
+                multivar_results,
+                storage_significant,
+                next_day_open_results,
+                next_day_open_xgb_results
+            )
             
             # Save results
-            self.save_results(self.merged_data, r_squared_df, multivar_results, storage_significant)
+            self.save_results(self.merged_data, r_squared_df, multivar_results, storage_significant, next_day_open_results, next_day_open_xgb_results)
             
             logger.info("Analysis completed successfully")
             return self.merged_data, r_squared_df
