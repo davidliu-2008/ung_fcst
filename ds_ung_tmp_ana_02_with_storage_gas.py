@@ -41,6 +41,8 @@ class UNGTemperatureAnalyzer:
         self.stock_data = None
         self.temp_data = None
         self.merged_data = None
+        self.axis_label_fontsize = 14
+        self.tick_label_fontsize = 14
         
         # Configuration
         self.config = {
@@ -51,6 +53,11 @@ class UNGTemperatureAnalyzer:
             'output_dir': 'output',
             'output_file': f'{self.output_prefix}_Temperature_Analysis_Results.csv'
         }
+        plt.rcParams.update({
+            'axes.labelsize': self.axis_label_fontsize,
+            'xtick.labelsize': self.tick_label_fontsize,
+            'ytick.labelsize': self.tick_label_fontsize
+        })
     
     def load_stock_data(self):
         """Load and preprocess UNG stock data"""
@@ -256,8 +263,8 @@ class UNGTemperatureAnalyzer:
             plt.plot(series.index, series.values, label=label, linewidth=2, alpha=0.8)
 
         plt.title('Temperature Comparison (two periods)', fontsize=14, fontweight='bold')
-        plt.xlabel('Date', fontsize=12)
-        plt.ylabel('Temperature (°C)', fontsize=12, fontweight='bold')
+        plt.xlabel('Date', fontsize=self.axis_label_fontsize)
+        plt.ylabel('Temperature (°C)', fontsize=self.axis_label_fontsize, fontweight='bold')
         plt.xticks(rotation=45)
         plt.grid(True, alpha=0.3)
         plt.legend()
@@ -470,8 +477,8 @@ class UNGTemperatureAnalyzer:
             plt.text(bar.get_width() + 0.01, bar.get_y() + bar.get_height()/2, 
                     f'{r2:.3f}', va='center', ha='left', fontweight='bold')
         
-        plt.xlabel('R-squared Value', fontsize=12, fontweight='bold')
-        plt.ylabel('Temperature Features', fontsize=12, fontweight='bold')
+        plt.xlabel('R-squared Value', fontsize=self.axis_label_fontsize, fontweight='bold')
+        plt.ylabel('Temperature Features', fontsize=self.axis_label_fontsize, fontweight='bold')
         plt.title(f'R-squared: Temperature Features vs {self.price_label} Open Price', 
                  fontsize=14, fontweight='bold')
         
@@ -519,8 +526,8 @@ class UNGTemperatureAnalyzer:
         plt.plot(clean_data[best_feature], y_pred, color='red', linewidth=2, 
                 label=f'Regression Line (R² = {r_squared_value:.3f})')
         
-        plt.xlabel(f'{best_feature} (°C)', fontsize=12, fontweight='bold')
-        plt.ylabel(f'{self.price_label} Open Price ($)', fontsize=12, fontweight='bold')
+        plt.xlabel(f'{best_feature} (°C)', fontsize=self.axis_label_fontsize, fontweight='bold')
+        plt.ylabel(f'{self.price_label} Open Price ($)', fontsize=self.axis_label_fontsize, fontweight='bold')
         plt.title(f'{self.price_label} Open Price vs {best_feature}\nR-squared = {r_squared_value:.3f}', 
                  fontsize=14, fontweight='bold')
         
@@ -552,8 +559,8 @@ class UNGTemperatureAnalyzer:
         # Primary y-axis for Open Price
         ax1 = plt.gca()
         color1 = 'tab:blue'
-        ax1.set_xlabel('Date', fontsize=12)
-        ax1.set_ylabel('Open Price ($)', color=color1, fontsize=12, fontweight='bold')
+        ax1.set_xlabel('Date', fontsize=self.axis_label_fontsize)
+        ax1.set_ylabel('Open Price ($)', color=color1, fontsize=self.axis_label_fontsize, fontweight='bold')
         line1 = ax1.plot(df.index, df['Open'], label='Open Price', 
                         color=color1, linewidth=2, alpha=0.8)
         ax1.tick_params(axis='y', labelcolor=color1)
@@ -562,7 +569,7 @@ class UNGTemperatureAnalyzer:
         # Secondary y-axis for Temperature
         ax2 = ax1.twinx()
         color2 = 'tab:red'
-        ax2.set_ylabel('Temperature Lag 5d (°C)', color=color2, fontsize=12, fontweight='bold')
+        ax2.set_ylabel('Temperature Lag 5d (°C)', color=color2, fontsize=self.axis_label_fontsize, fontweight='bold')
         line2 = ax2.plot(df.index, df['temp_c_lag_5d'], label='Temperature Lag 5d', 
                         color=color2, linewidth=2, alpha=0.7, linestyle='--')
         ax2.tick_params(axis='y', labelcolor=color2)
@@ -681,8 +688,8 @@ class UNGTemperatureAnalyzer:
                             cmap='viridis',
                             s=50)
         
-        plt.xlabel('Temperature Anomaly (°C)', fontsize=12)
-        plt.ylabel('Daily Price Change (%)', fontsize=12)
+        plt.xlabel('Temperature Anomaly (°C)', fontsize=self.axis_label_fontsize)
+        plt.ylabel('Daily Price Change (%)', fontsize=self.axis_label_fontsize)
         plt.title('Temperature Anomaly vs Price Changes', fontsize=14, fontweight='bold')
         
         # Add reference lines
@@ -732,8 +739,8 @@ class UNGTemperatureAnalyzer:
         
         # Plot volume on primary y-axis
         color1 = 'green'
-        ax1.set_xlabel('Date', fontsize=12)
-        ax1.set_ylabel('Volume (Millions)', color=color1, fontsize=12, fontweight='bold')
+        ax1.set_xlabel('Date', fontsize=self.axis_label_fontsize)
+        ax1.set_ylabel('Volume (Millions)', color=color1, fontsize=self.axis_label_fontsize, fontweight='bold')
         ax1.plot(clean_data.index, clean_data['Volume'] / 1e6, 
                 label='Volume (Millions)', 
                 color=color1, 
@@ -745,7 +752,7 @@ class UNGTemperatureAnalyzer:
         # Plot temperature volatility on secondary y-axis
         ax2 = ax1.twinx()
         color2 = 'orange'
-        ax2.set_ylabel('Temperature Volatility (5-day STD)', color=color2, fontsize=12, fontweight='bold')
+        ax2.set_ylabel('Temperature Volatility (5-day STD)', color=color2, fontsize=self.axis_label_fontsize, fontweight='bold')
         ax2.plot(clean_data.index, clean_data['temp_volatility_5d'], 
                 label='Temperature Volatility (5d)', 
                 color=color2, 
@@ -781,8 +788,8 @@ class UNGTemperatureAnalyzer:
         fig, ax1 = plt.subplots(figsize=(12, 6))
 
         color1 = 'tab:blue'
-        ax1.set_xlabel('Date', fontsize=12)
-        ax1.set_ylabel('Open Price ($)', color=color1, fontsize=12, fontweight='bold')
+        ax1.set_xlabel('Date', fontsize=self.axis_label_fontsize)
+        ax1.set_ylabel('Open Price ($)', color=color1, fontsize=self.axis_label_fontsize, fontweight='bold')
         ax1.plot(
             clean_data.index,
             clean_data['Open'],
@@ -796,7 +803,7 @@ class UNGTemperatureAnalyzer:
 
         ax2 = ax1.twinx()
         color2 = 'tab:orange'
-        ax2.set_ylabel('Temperature Volatility (5-day STD)', color=color2, fontsize=12, fontweight='bold')
+        ax2.set_ylabel('Temperature Volatility (5-day STD)', color=color2, fontsize=self.axis_label_fontsize, fontweight='bold')
         ax2.plot(
             clean_data.index,
             clean_data['temp_volatility_5d'],
@@ -837,8 +844,8 @@ class UNGTemperatureAnalyzer:
         fig, ax1 = plt.subplots(figsize=(12, 6))
 
         color1 = 'tab:blue'
-        ax1.set_xlabel('Date', fontsize=12)
-        ax1.set_ylabel('Open Return (1d)', color=color1, fontsize=12, fontweight='bold')
+        ax1.set_xlabel('Date', fontsize=self.axis_label_fontsize)
+        ax1.set_ylabel('Open Return (1d)', color=color1, fontsize=self.axis_label_fontsize, fontweight='bold')
         ax1.plot(
             clean_data.index,
             clean_data['open_return_1d'],
@@ -852,7 +859,7 @@ class UNGTemperatureAnalyzer:
 
         ax2 = ax1.twinx()
         color2 = 'tab:orange'
-        ax2.set_ylabel('Temperature Volatility (5-day STD)', color=color2, fontsize=12, fontweight='bold')
+        ax2.set_ylabel('Temperature Volatility (5-day STD)', color=color2, fontsize=self.axis_label_fontsize, fontweight='bold')
         ax2.plot(
             clean_data.index,
             clean_data['temp_volatility_5d'],
@@ -892,8 +899,8 @@ class UNGTemperatureAnalyzer:
         fig, ax1 = plt.subplots(figsize=(12, 6))
 
         color1 = 'tab:blue'
-        ax1.set_xlabel('Date', fontsize=12)
-        ax1.set_ylabel('Open Price ($)', color=color1, fontsize=12, fontweight='bold')
+        ax1.set_xlabel('Date', fontsize=self.axis_label_fontsize)
+        ax1.set_ylabel('Open Price ($)', color=color1, fontsize=self.axis_label_fontsize, fontweight='bold')
         ax1.plot(
             clean_data.index,
             clean_data['Open'],
@@ -907,7 +914,7 @@ class UNGTemperatureAnalyzer:
 
         ax2 = ax1.twinx()
         color2 = 'tab:red'
-        ax2.set_ylabel('Temp Anomaly (C) Lag 5d', color=color2, fontsize=12, fontweight='bold')
+        ax2.set_ylabel('Temp Anomaly (C) Lag 5d', color=color2, fontsize=self.axis_label_fontsize, fontweight='bold')
         ax2.plot(
             clean_data.index,
             clean_data['temp_anomaly_c_lag_5d'],
@@ -1073,8 +1080,8 @@ class UNGTemperatureAnalyzer:
         fig, ax1 = plt.subplots(figsize=(12, 6))
 
         color1 = 'tab:blue'
-        ax1.set_xlabel('Date', fontsize=12)
-        ax1.set_ylabel('Open Price ($)', color=color1, fontsize=12, fontweight='bold')
+        ax1.set_xlabel('Date', fontsize=self.axis_label_fontsize)
+        ax1.set_ylabel('Open Price ($)', color=color1, fontsize=self.axis_label_fontsize, fontweight='bold')
         ax1.plot(
             clean_data.index,
             clean_data['Open'],
@@ -1088,7 +1095,7 @@ class UNGTemperatureAnalyzer:
 
         ax2 = ax1.twinx()
         color2 = 'tab:orange'
-        ax2.set_ylabel('Weekly Change (BCF)', color=color2, fontsize=12, fontweight='bold')
+        ax2.set_ylabel('Weekly Change (BCF)', color=color2, fontsize=self.axis_label_fontsize, fontweight='bold')
         ax2.plot(
             clean_data.index,
             clean_data['weekly_change_bcf'],
@@ -1130,8 +1137,8 @@ class UNGTemperatureAnalyzer:
         fig, ax1 = plt.subplots(figsize=(12, 6))
 
         color1 = 'tab:blue'
-        ax1.set_xlabel('Date', fontsize=12)
-        ax1.set_ylabel('Open Return (1d)', color=color1, fontsize=12, fontweight='bold')
+        ax1.set_xlabel('Date', fontsize=self.axis_label_fontsize)
+        ax1.set_ylabel('Open Return (1d)', color=color1, fontsize=self.axis_label_fontsize, fontweight='bold')
         ax1.plot(
             clean_data.index,
             clean_data['open_return_1d'],
@@ -1145,7 +1152,7 @@ class UNGTemperatureAnalyzer:
 
         ax2 = ax1.twinx()
         color2 = 'tab:orange'
-        ax2.set_ylabel('Weekly Change (BCF)', color=color2, fontsize=12, fontweight='bold')
+        ax2.set_ylabel('Weekly Change (BCF)', color=color2, fontsize=self.axis_label_fontsize, fontweight='bold')
         ax2.plot(
             clean_data.index,
             clean_data['weekly_change_bcf'],
@@ -1346,8 +1353,8 @@ class UNGTemperatureAnalyzer:
         plt.plot(preds.index, preds['Open_t_plus_1'], label='Actual Next-day Open', color='tab:blue', linewidth=2, alpha=0.8)
         plt.plot(preds.index, preds['Open_t_plus_1_pred'], label='Predicted Next-day Open', color='tab:orange', linestyle='--', linewidth=2, alpha=0.8)
         plt.title(f'Next-day Open: Actual vs Predicted ({tag})', fontsize=14, fontweight='bold')
-        plt.xlabel('Date', fontsize=12)
-        plt.ylabel('Open Price ($)', fontsize=12, fontweight='bold')
+        plt.xlabel('Date', fontsize=self.axis_label_fontsize)
+        plt.ylabel('Open Price ($)', fontsize=self.axis_label_fontsize, fontweight='bold')
         plt.xticks(rotation=45)
         plt.grid(True, alpha=0.3)
         plt.legend()
@@ -1362,8 +1369,8 @@ class UNGTemperatureAnalyzer:
         max_val = max(preds['Open_t_plus_1'].max(), preds['Open_t_plus_1_pred'].max())
         plt.plot([min_val, max_val], [min_val, max_val], 'r--', linewidth=1)
         plt.title(f'Predicted vs Actual Next-day Open ({tag})', fontsize=14, fontweight='bold')
-        plt.xlabel('Actual Next-day Open', fontsize=12)
-        plt.ylabel('Predicted Next-day Open', fontsize=12)
+        plt.xlabel('Actual Next-day Open', fontsize=self.axis_label_fontsize)
+        plt.ylabel('Predicted Next-day Open', fontsize=self.axis_label_fontsize)
         plt.grid(True, alpha=0.3)
         plt.tight_layout()
         output_path = os.path.join(self.config['output_dir'], f'{self.output_prefix}_next_day_open_{tag}_pred_vs_actual.png')
@@ -1375,8 +1382,8 @@ class UNGTemperatureAnalyzer:
         plt.plot(preds.index, preds['residual'], color='tab:red', linewidth=1.5)
         plt.axhline(0, color='black', linewidth=0.8, linestyle='--')
         plt.title(f'Next-day Open Residuals Over Time ({tag})', fontsize=14, fontweight='bold')
-        plt.xlabel('Date', fontsize=12)
-        plt.ylabel('Residual ($)', fontsize=12)
+        plt.xlabel('Date', fontsize=self.axis_label_fontsize)
+        plt.ylabel('Residual ($)', fontsize=self.axis_label_fontsize)
         plt.xticks(rotation=45)
         plt.grid(True, alpha=0.3)
         plt.tight_layout()
