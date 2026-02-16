@@ -46,7 +46,7 @@ class UNGTemperatureAnalyzer:
         
         # Configuration
         self.config = {
-            'analysis_period': {'start_day': 330, 'end_day': 420},
+            'analysis_period': {'start_day': 300, 'end_day': 420},
             'temperature_lags': [1, 3, 5, 7],
             'rolling_windows': [3, 5, 7, 30],
             'storage_lags_weeks': [1, 2, 4],
